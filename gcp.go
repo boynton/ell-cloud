@@ -1,16 +1,16 @@
 package cloud
 
-import(
-//	"strings"
-"os"
-"fmt"
+import (
+	//	"strings"
+	"fmt"
 	"io/ioutil"
-	"time"
-"strings"
 	"net/http"
+	"os"
+	"strings"
+	"time"
 
 	"github.com/boynton/ell"
-   "github.com/go-ini/ini"
+	"github.com/go-ini/ini"
 	"golang.org/x/net/context"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/compute/v1"
@@ -86,7 +86,7 @@ func gcpProvider(profile, region string) (Provider, error) {
 }
 
 type GCP struct {
-	profile string
+	profile  string
 	identity string
 	project  string
 	region   string
@@ -131,7 +131,26 @@ func (gcp *GCP) Describe(resource *ell.Object) (*ell.Object, error) {
 			return gcp.DescribeSubnet(val.String())
 		}
 	case CloudType:
-		return gcp.ListNetworks()
+		nets, err := gcp.ListNetworks()
+		if err != nil {
+			return nil, err
+		}
+		repr := ell.MakeStruct(7)
+		ell.Put(repr, ell.Intern("provider:"), ell.String("gcp"))
+		if gcp.profile != "" {
+			ell.Put(repr, ell.Intern("profile:"), ell.String(gcp.profile))
+		}
+		if gcp.identity != "" {
+			ell.Put(repr, ell.Intern("identity:"), ell.String(gcp.identity))
+		}
+		if gcp.project != "" {
+			ell.Put(repr, ell.Intern("account:"), ell.String(gcp.project))
+		}
+		if gcp.region != "" {
+			ell.Put(repr, ell.Intern("region:"), ell.String(gcp.region))
+		}
+		ell.Put(repr, ell.Intern("networks:"), nets)
+		return ell.Instance(CloudType, repr)
 	}
 	return nil, ell.Error(CloudErrorKey, "template does not provide enough info: ", resource)
 }
@@ -180,7 +199,7 @@ func gcpInCloud() bool {
 }
 
 type GcpNetwork struct {
-	name string
+	name        string
 	description string
 }
 
@@ -211,7 +230,7 @@ func (gcp *GCP) netRepresentation(net *compute.Network) *ell.Object {
 		subnet, _ := ell.Instance(SubnetType, subnetRepr)
 		subnets = append(subnets, subnet)
 	}
-	ell.Put(repr, ell.Intern("subnets:"), ell.ListFromValues(subnets))
+	ell.Put(repr, ell.Intern("subnets:"), ell.VectorFromElementsNoCopy(subnets))
 	obj, _ := ell.Instance(NetworkType, repr)
 	return obj
 }
@@ -237,7 +256,7 @@ func (gcp *GCP) ListNetworks() (*ell.Object, error) {
 	for _, item := range res.Items {
 		nets = append(nets, gcp.netRepresentation(item))
 	}
-	return ell.ListFromValues(nets), nil
+	return ell.VectorFromElementsNoCopy(nets), nil
 }
 
 func (gcp *GCP) CreateNetwork(name string, cidr string, zones []string) (*ell.Object, error) {
@@ -255,10 +274,10 @@ func (gcp *GCP) DescribeNetwork(name string) (*ell.Object, error) {
 		return nil, err
 	}
 	return gcp.netRepresentation(net), nil
-//	fmt.Println("network:", pretty(net))
-//	fmt.Println("subnets:", pretty(net.Subnetworks))
+	//	fmt.Println("network:", pretty(net))
+	//	fmt.Println("subnets:", pretty(net.Subnetworks))
 	//
-//	return ell.Null, nil
+	//	return ell.Null, nil
 }
 
 func (gcp *GCP) DescribeSubnet(name string) (*ell.Object, error) {
@@ -270,28 +289,29 @@ func (gcp *GCP) DescribeSubnet(name string) (*ell.Object, error) {
 }
 
 func (gcp *GCP) ListSubnets(netName string) (*ell.Object, error) {
-/*	net, err := gcp.GetNetwork(netName)
-	//note: subnets must be enumerated in each region
-	if err != nil {
-		return nil, err
-	}
-	res, err := prov.compute.Subnetworks.List(prov.project, prov.region).Do()
-	if err != nil {
-		return nil, err
-	}
-*/
+	/*	net, err := gcp.GetNetwork(netName)
+		//note: subnets must be enumerated in each region
+		if err != nil {
+			return nil, err
+		}
+		res, err := prov.compute.Subnetworks.List(prov.project, prov.region).Do()
+		if err != nil {
+			return nil, err
+		}
+	*/
 	nets := make([]*ell.Object, 0)
-/*
-	for _, item := range res.Items {
-		repr := ell.MakeStruct(2)
-		ell.Put(repr, ell.Intern("name:"), ell.String(item.Name))
-		ell.Put(repr, ell.Intern("description:"), ell.String(item.Description))
-		obj, _ := ell.Instance(NetworkType, repr)
-		nets = append(nets, obj)
-	}
-*/
-	return ell.ListFromValues(nets), nil
+	/*
+		for _, item := range res.Items {
+			repr := ell.MakeStruct(2)
+			ell.Put(repr, ell.Intern("name:"), ell.String(item.Name))
+			ell.Put(repr, ell.Intern("description:"), ell.String(item.Description))
+			obj, _ := ell.Instance(NetworkType, repr)
+			nets = append(nets, obj)
+		}
+	*/
+	return ell.VectorFromElementsNoCopy(nets), nil
 }
+
 /*
 	if err != nil {
 		return nil, err
@@ -364,4 +384,3 @@ func (cloud *GcpCloud) ListSubnets() (*ell.Object, error) {
 	return res, err
 }
 */
-
