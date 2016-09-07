@@ -17,12 +17,14 @@ This assumes you have set up gcloud related tooling, with some configurations, a
     ? (cloud profile: "dev2")
     = #[cloud provider: "gcp" profile: "dev2" region: "us-west1" identity: "somebody@somewhere.com" account: "dev-two"]
     ? (cloud describe: #<cloud>{})
-    = (#<network>{id: "2014652406467471095" name: "default" description: "Default network for the project" created: "2016-09-04T14:54:32.364-07:00" subnets: ("default" "default" "default" "default" "default")} #<network>{created: "2016-09-04T15:12:36.915-07:00" subnets: ("mysubnet" "mynet-us-west1-a") id: "188895417056961211" name: "mynet" description: "My test network"})
+    = #<cloud>{provider: "gcp" profile: "dev" identity: "somebody@somwhere.com" account: "dev-one" region: "us-west1" networks: [#<network>{name: "default" id: "2014652406467471095" description: "Default network for the project" created: "2016-09-04T14:54:32.364-07:00" subnets: [#<subnet>{name: "default"} #<subnet>{name: "default"} #<subnet>{name: "default"} #<subnet>{name: "default"} #<subnet>{name: "default"}]} #<network>{description: "My test network" subnets: [#<subnet>{name: "mysubnet"} #<subnet>{name: "mynet-us-west1-a"}] id: "188895417056961211" name: "mynet" created: "2016-09-04T15:12:36.915-07:00"}]}
     ? (cloud describe: #<network>{name: "mynet"})
-    = #<network>{description: "My test network" created: "2016-09-04T15:12:36.915-07:00" id: "188895417056961211" name: "mynet" subnets: ("mysubnet" "mynet-us-west1-a")}
+    = #<network>{subnets: [#<subnet>{name: "mysubnet"} #<subnet>{name: "mynet-us-west1-a"}] id: "188895417056961211" name: "mynet" description: "My test network" created: "2016-09-04T15:12:36.915-07:00"}
     ? (subnets: (cloud describe: #<network>{name: "mynet"}))
+    = [#<subnet>{name: "mysubnet"} #<subnet>{name: "mynet-us-west1-a"}]
+    ? (vector-ref (subnets: (cloud describe: #<network>{name: "mynet"})) 0)
     = #<subnet>{name: "mysubnet"}
-    ? (cloud describe: (car (subnets: (cloud describe: #<network>{name: "mynet"}))))
+    ? (cloud describe: (vector-ref (subnets: (cloud describe: #<network>{name: "mynet"})) 0))
     = #<subnet>{cidr: "10.0.1.0/24" id: "6077311531381453533" created: "2016-09-05T12:49:06.336-07:00" gateway: "10.0.1.1" name: "mysubnet"}
 
 Note also that "account" is used as a more generic term for a gcp project.
