@@ -116,6 +116,46 @@ func (gcp *GCP) Region() string {
 	return gcp.region
 }
 
+func (gcp *GCP) String() string {
+	return fmt.Sprintf("#<cloud>{provider: %q profile: %q region: %q identity: %q account: %q}", gcp.Name(), gcp.Profile(), gcp.Region(), gcp.Identity(), gcp.Account())
+}
+
+func stringAttribute(resource *ell.Object, key string) string {
+	v, _ := ell.Get(resource, ell.Intern(key))
+	if v != nil {
+		if ell.IsString(v) {
+			return v.String()
+		}
+	}
+	return ""
+}
+
+func (gcp *GCP) isSameCloud(resource *ell.Object) bool {
+	var provider string
+	var account string
+	var region string
+	if resource.Type == CloudType {
+		other, _ := resource.Value.(*GCP)
+		if other == nil {
+			provider = stringAttribute(resource, "provider:")
+			account = stringAttribute(resource, "account:")
+			region = stringAttribute(resource, "region:")
+		} else {
+			provider = other.Name() //stringAttribute(resource, "provider:")
+			account = other.Account()
+			region = other.Region()
+		}
+	}
+	if provider == "" || provider == gcp.Name() {
+		if account == "" || account == gcp.Account() {
+			if region == "" || region == gcp.Region() {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func (gcp *GCP) Describe(resource *ell.Object) (*ell.Object, error) {
 	//note that the resource is a vacant DOM, so for example a zone could be given but not a name, etc. So this is a general query
 	//for now, just use the name, err out on anything else
@@ -131,6 +171,9 @@ func (gcp *GCP) Describe(resource *ell.Object) (*ell.Object, error) {
 			return gcp.DescribeSubnet(val.String())
 		}
 	case CloudType:
+		if !gcp.isSameCloud(resource) {
+			return nil, ell.Error(CloudErrorKey, "description is for a different cloud")
+		}
 		nets, err := gcp.ListNetworks()
 		if err != nil {
 			return nil, err

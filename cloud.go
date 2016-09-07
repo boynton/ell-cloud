@@ -54,37 +54,10 @@ type Provider interface {
 
 var CloudErrorKey = ell.Intern("cloud-error:")
 
-var ProviderType = ell.Intern("<provider>")
-
 //types that are all templates
 var CloudType = ell.Intern("<cloud>")
 var NetworkType = ell.Intern("<network>")
 var SubnetType = ell.Intern("<subnet>")
-
-type CloudProvider struct {
-	provider Provider
-}
-
-func (cld *CloudProvider) String() string {
-	p := cld.provider
-	return fmt.Sprintf("#[%s provider profile: %q region: %q identity: %q account: %q]", p.Name(), p.Profile(), p.Region(), p.Identity(), p.Account())
-}
-
-func (cld *CloudProvider) Describe(resource *ell.Object) (*ell.Object, error) {
-	return cld.provider.Describe(resource)
-}
-
-func (cld *CloudProvider) Plan(resource *ell.Object) (*ell.Object, error) {
-	return cld.provider.Plan(resource)
-}
-
-func (cld *CloudProvider) Apply(resource *ell.Object) (*ell.Object, error) {
-	return cld.provider.Apply(resource)
-}
-
-func (cld *CloudProvider) Destroy(resource *ell.Object) (*ell.Object, error) {
-	return cld.provider.Destroy(resource)
-}
 
 func ellCloud(argv []*ell.Object) (*ell.Object, error) {
 	provider := ell.StringValue(argv[0])
@@ -100,7 +73,6 @@ func ellCloud(argv []*ell.Object) (*ell.Object, error) {
 	case "gcp":
 		prov, err = gcpProvider(profile, region)
 	case "aws":
-		//cld, err = awsCloud(provider, profile, region)
 		prov, err = awsProvider(profile, region)
 	default:
 		err = ell.Error(CloudErrorKey, "Unrecognized cloud provider: '", provider, "'")
@@ -108,17 +80,16 @@ func ellCloud(argv []*ell.Object) (*ell.Object, error) {
 	if err != nil {
 		return nil, ell.Error(ell.ArgumentErrorKey, fmt.Sprintf("cannot connect to provider '%s': %v  ", provider, err))
 	}
-	impl := &CloudProvider{provider: prov}
 	if describe != ell.Null {
-		return impl.Describe(describe)
+		return prov.Describe(describe)
 	} else if plan != ell.Null {
-		return impl.Plan(plan)
+		return prov.Plan(plan)
 	} else if apply != ell.Null {
-		return impl.Apply(apply)
+		return prov.Apply(apply)
 	} else if destroy != ell.Null {
 		return prov.Destroy(destroy)
 	}
-	return ell.NewObject(ProviderType, prov), nil
+	return ell.NewObject(CloudType, prov), nil //a <cloud> type can be either connect, like this, or as a simple template
 }
 
 func pretty(obj interface{}) string {
